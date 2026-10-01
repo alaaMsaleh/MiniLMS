@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Mvc;
 using MiniLMS.Application.DTOs.Identities;
 using MiniLMS.Domain.Entities;
+using MiniLMS.Domain.ServicesContract;
 using MiniLMS.Infrastructure.DBContext;
 
 namespace MiniLMS.API.Controllers
@@ -13,14 +14,18 @@ namespace MiniLMS.API.Controllers
         private readonly UserManager<User> _userManager;
         private readonly SignInManager<User> _siginManager;
         private readonly ApplicationDbContext _context;
-        public AuthController(UserManager<User> userManager, SignInManager<User> siginManager, ApplicationDbContext context)
+        private readonly IAuthService _authService;
+        public AuthController(UserManager<User> userManager, SignInManager<User> siginManager,
+            ApplicationDbContext context,
+            IAuthService authService)
         {
             _userManager = userManager;
             _siginManager = siginManager;
             _context = context;
+            _authService = authService;
         }
         [HttpPost("Register")] //Post : api/Auth/Register
-        public async Task<ActionResult<UserDto> Registration(RegisterRequestDto registerRequestDto)
+        public async Task<ActionResult<UserDto>> Registration([FromForm] RegisterRequestDto registerRequestDto)
         {
             if (!ModelState.IsValid)
             {
@@ -51,12 +56,19 @@ namespace MiniLMS.API.Controllers
                 return BadRequest(result.Errors);
             }
 
-            return Ok(result);
+            return Ok(new UserDto()
+            {
+                UserName = user.UserName,
+                Email = user.Email,
+                Token = await _authService.CreateTokenAsync(user, _userManager)
+
+
+            });
 
         }
 
         [HttpPost("login")]
-        public async Task<ActionResult<UserDto>> Login(LoginDto model)
+        public async Task<ActionResult<UserDto>> Login([FromForm] LoginDto model)
         {
             var user = await _userManager.FindByEmailAsync(model.Email);
 
@@ -70,7 +82,7 @@ namespace MiniLMS.API.Controllers
             {
                 UserName = user.UserName,
                 Email = user.Email,
-                Token = "Token"
+                Token = await _authService.CreateTokenAsync(user, _userManager)
 
 
             });
