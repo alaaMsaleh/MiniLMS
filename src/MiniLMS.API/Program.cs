@@ -1,9 +1,12 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using MiniLMS.Application.AuthService;
+using MiniLMS.Application.Interfaces;
+using MiniLMS.Application.Services;
 using MiniLMS.Domain.Entities;
 using MiniLMS.Domain.ServicesContract;
 using MiniLMS.Infrastructure.DBContext;
+using MiniLMS.Infrastructure.Repositories;
+
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -17,7 +20,8 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddScoped(typeof(IAuthService), typeof(AuthService));
-
+builder.Services.AddScoped<IQuestionService, QuestionService>();
+builder.Services.AddScoped<IQuestionRepository, QuestionRepository>();
 builder.Services.AddIdentity<User, IdentityRole<int>>()
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
@@ -31,7 +35,7 @@ var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<int>>>();
-    foreach (var role in new[] { "Admin", "Instructor", "Student" })
+    foreach (var role in new[] { "Admin", "Student" })
     {
         if (!await roleManager.RoleExistsAsync(role))
             await roleManager.CreateAsync(new IdentityRole<int>(role));

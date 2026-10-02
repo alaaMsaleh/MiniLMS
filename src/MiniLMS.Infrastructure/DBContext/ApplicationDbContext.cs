@@ -11,9 +11,31 @@ namespace MiniLMS.Infrastructure.DBContext
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
             : base(options) { }
 
-        protected override void OnModelCreating(ModelBuilder builder)
+
+
+        public DbSet<Question> Questions { get; set; }
+        public DbSet<Choice> Choices { get; set; }
+        public DbSet<Quiz> Quizzes { get; set; }
+        public DbSet<QuizQuestion> QuizQuestions { get; set; }
+
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
-            base.OnModelCreating(builder);
+            base.OnModelCreating(modelBuilder);
+
+            modelBuilder.Entity<QuizQuestion>()
+        .HasKey(qq => new { qq.QuizId, qq.QuestionId });
+
+            modelBuilder.Entity<QuizQuestion>()
+                .HasOne(qq => qq.Quiz)
+                .WithMany(q => q.QuizQuestions)
+                .HasForeignKey(qq => qq.QuizId);
+
+            modelBuilder.Entity<QuizQuestion>()
+                .HasOne(qq => qq.Question)
+                .WithMany()
+                .HasForeignKey(qq => qq.QuestionId);
         }
+
     }
 }

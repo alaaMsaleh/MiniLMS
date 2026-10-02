@@ -7,7 +7,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 
-namespace MiniLMS.Application.AuthService
+namespace MiniLMS.Application.Services
 {
     public class AuthService : IAuthService
     {

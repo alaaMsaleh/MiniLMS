@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using MiniLMS.Infrastructure.DBContext;
 
@@ -11,9 +12,11 @@ using MiniLMS.Infrastructure.DBContext;
 namespace MiniLMS.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261001152603_QuestionModule")]
+    partial class QuestionModule
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -192,6 +195,7 @@ namespace MiniLMS.Infrastructure.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
                     b.Property<string>("ImageUrl")
+                        .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<bool>("IsDeleted")
@@ -204,47 +208,6 @@ namespace MiniLMS.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Questions");
-                });
-
-            modelBuilder.Entity("MiniLMS.Domain.Entities.Quiz", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("DurationInMinutes")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Quizzes");
-                });
-
-            modelBuilder.Entity("MiniLMS.Domain.Entities.QuizQuestion", b =>
-                {
-                    b.Property<int>("QuizId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("QuestionId")
-                        .HasColumnType("int");
-
-                    b.HasKey("QuizId", "QuestionId");
-
-                    b.HasIndex("QuestionId");
-
-                    b.ToTable("QuizQuestions");
                 });
 
             modelBuilder.Entity("MiniLMS.Domain.Entities.User", b =>
@@ -384,33 +347,9 @@ namespace MiniLMS.Infrastructure.Migrations
                     b.Navigation("Question");
                 });
 
-            modelBuilder.Entity("MiniLMS.Domain.Entities.QuizQuestion", b =>
-                {
-                    b.HasOne("MiniLMS.Domain.Entities.Question", "Question")
-                        .WithMany()
-                        .HasForeignKey("QuestionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("MiniLMS.Domain.Entities.Quiz", "Quiz")
-                        .WithMany("QuizQuestions")
-                        .HasForeignKey("QuizId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Question");
-
-                    b.Navigation("Quiz");
-                });
-
             modelBuilder.Entity("MiniLMS.Domain.Entities.Question", b =>
                 {
                     b.Navigation("Choices");
-                });
-
-            modelBuilder.Entity("MiniLMS.Domain.Entities.Quiz", b =>
-                {
-                    b.Navigation("QuizQuestions");
                 });
 #pragma warning restore 612, 618
         }

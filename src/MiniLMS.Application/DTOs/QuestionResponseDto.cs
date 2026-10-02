@@ -1,12 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using MiniLMS.Application.DTOs.ChoicesDtos;
 
 namespace MiniLMS.Application.DTOs
 {
-    internal class QuestionResponseDto
+    public class QuestionResponseDto
     {
+        public int Id { get; set; }
+        public string Text { get; set; } = string.Empty;
+        public string? ImageUrl { get; set; }
+        public List<ChoiceResponseDto> Choices { get; set; } = new();
     }
+
 }
