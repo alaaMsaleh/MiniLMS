@@ -121,5 +121,71 @@ namespace MiniLMS.Infrastructure.Services
             };
 
         }
+
+        public async Task<QuizResultDto> SubmitQuizAsync(int quizId, int studentId, SubmitQuizDto dto)
+        {
+            var quiz = await _context.Quizzes
+                .Include(q => q.QuizQuestions)
+                .ThenInclude(qq => qq.Question)
+                .ThenInclude(q => q.Choices)
+               .FirstOrDefaultAsync(q => q.Id == quizId);
+
+            if (quiz == null)
+                throw new KeyNotFoundException("Quiz not found.");
+
+            var activeQuestions = quiz.QuizQuestions.Select(qq => qq.Question).ToList();
+
+            var CorrectAnswer = 0;
+
+            var studentAnswers = new List<StudentAnswer>();
+
+            foreach (var answer in dto.Answers)
+            {
+
+                var question = activeQuestions.FirstOrDefault(q => q.Id == answer.QuestionId);
+                if (question == null) continue;
+
+                var selectedChoice = question.Choices.FirstOrDefault(c => c.Id == answer.SelectedChoiceId);
+                bool isCorrect = selectedChoice?.IsCorrect ?? false;
+
+                if (isCorrect) CorrectAnswer++;
+
+                studentAnswers.Add(new StudentAnswer
+                {
+                    QuestionId = question.Id,
+                    SelectedChoiceId = answer.SelectedChoiceId,
+                    IsCorrect = isCorrect
+                });
+            }
+
+
+            var submission = new QuizSubmission
+            {
+                QuizId = quizId,
+                StudentId = studentId,
+                TotalQuestions = activeQuestions.Count,
+                CorrectAnswers = CorrectAnswer,
+                IncorrectAnswers = activeQuestions.Count - CorrectAnswer,
+                Score = CorrectAnswer,
+                SubmittedAt = DateTime.UtcNow,
+                StudentAnswers = studentAnswers
+            };
+
+
+
+            _context.QuizSubmissions.Add(submission);
+            await _context.SaveChangesAsync();
+
+            return new QuizResultDto
+            {
+                SubmissionId = submission.Id,
+                Score = submission.Score,
+                TotalQuestions = submission.TotalQuestions,
+                CorrectAnswers = submission.CorrectAnswers,
+                IncorrectAnswers = submission.IncorrectAnswers,
+                //SubmittedAt = submission.SubmittedAt
+            };
+        }
     }
 }
+

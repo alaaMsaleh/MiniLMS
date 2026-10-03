@@ -9,5 +9,7 @@ namespace MiniLMS.Application.Interfaces
         Task<IEnumerable<QuizResponseDto>> GetAllQuizzesAsync();
 
         Task<bool> DeleteQuizAsync(int id);
+
+        Task<QuizResultDto> SubmitQuizAsync(int quizId, int studentId, SubmitQuizDto dto);
     }
 }

@@ -16,7 +16,11 @@ namespace MiniLMS.Infrastructure.DBContext
         public DbSet<Question> Questions { get; set; }
         public DbSet<Choice> Choices { get; set; }
         public DbSet<Quiz> Quizzes { get; set; }
+        public DbSet<QuizSubmission> QuizSubmissions { get; set; }
         public DbSet<QuizQuestion> QuizQuestions { get; set; }
+        public DbSet<StudentAnswer> StudentAnswer { get; set; }
+
+
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -34,7 +38,11 @@ namespace MiniLMS.Infrastructure.DBContext
             modelBuilder.Entity<QuizQuestion>()
                 .HasOne(qq => qq.Question)
                 .WithMany()
+
                 .HasForeignKey(qq => qq.QuestionId);
+
+
+
         }
 
     }

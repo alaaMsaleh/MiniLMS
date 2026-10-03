@@ -9,5 +9,8 @@
 
         public int QuestionId { get; set; } //FK2
         public Question Question { get; set; } = null!;
+
+        // Display order of the question inside the quiz
+        public int Order { get; set; }
     }
 }

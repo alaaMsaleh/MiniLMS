@@ -6,6 +6,7 @@ using MiniLMS.Domain.Entities;
 using MiniLMS.Domain.ServicesContract;
 using MiniLMS.Infrastructure.DBContext;
 using MiniLMS.Infrastructure.Repositories;
+using MiniLMS.Infrastructure.Services;
 
 
 
@@ -22,6 +23,8 @@ options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnectio
 builder.Services.AddScoped(typeof(IAuthService), typeof(AuthService));
 builder.Services.AddScoped<IQuestionService, QuestionService>();
 builder.Services.AddScoped<IQuestionRepository, QuestionRepository>();
+builder.Services.AddScoped<IQuizService, QuizService>();
+
 builder.Services.AddIdentity<User, IdentityRole<int>>()
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
