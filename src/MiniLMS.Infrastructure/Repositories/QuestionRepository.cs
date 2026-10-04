@@ -35,14 +35,11 @@ namespace MiniLMS.Infrastructure.Repositories
              .ToListAsync();
         }
 
-        public void Delete(Question question)
+        public async Task ExecuteInTransactionAsync(Func<Task> action)
         {
-            _context.Questions.Remove(question); //change status
-        }
-
-        public void Update(Question question)
-        {
-            _context.Questions.Update(question);
+            await using var transaction = await _context.Database.BeginTransactionAsync();
+            await action();
+            await transaction.CommitAsync();
         }
 
 

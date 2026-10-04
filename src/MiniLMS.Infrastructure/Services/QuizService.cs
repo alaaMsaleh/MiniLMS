@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using MiniLMS.Application.DTOs;
 using MiniLMS.Application.DTOs.ChoicesDtos;
 using MiniLMS.Application.DTOs.QuizzesDtos;
@@ -11,94 +12,58 @@ namespace MiniLMS.Infrastructure.Services
     public class QuizService : IQuizService
     {
         private readonly ApplicationDbContext _context;
+        private readonly ILogger<QuizService> _logger;
 
-        public QuizService(ApplicationDbContext context)
+        public QuizService(ApplicationDbContext context, ILogger<QuizService> logger)
         {
             _context = context;
+            _logger = logger;
         }
+
         public async Task<QuizResponseDto> CreateQuizAsync(CreateQuizeDto dto)
         {
-            if (dto.QuestionIds == null || !dto.QuestionIds.Any())
-            {
-                throw new ArgumentException("Quiz must contain at least one question.");
-            }
+            if (string.IsNullOrWhiteSpace(dto.Title))
+                throw new ArgumentException("Title is required.");
 
-            //check question at Db
+            var ids = dto.QuestionIds.Distinct().ToList();
+            if (ids.Count == 0)
+                throw new ArgumentException("A quiz must contain at least one question.");
 
-            var exisitngQuestionIds = await _context.Questions
-                .Where(q => dto.QuestionIds.Contains(q.Id))
+            //  query filter
+            var existing = await _context.Questions
+                .Where(q => ids.Contains(q.Id))
                 .Select(q => q.Id)
                 .ToListAsync();
 
-            var missingIds = dto.QuestionIds
-                .Except(exisitngQuestionIds).ToList();
+            var missing = ids.Except(existing).ToList();
+            if (missing.Count > 0)
+                throw new KeyNotFoundException($"Questions with IDs [{string.Join(", ", missing)}] do not exist.");
 
-            if (missingIds.Any())
-            {
-
-                throw new KeyNotFoundException($"Questions with IDs [{string.Join(", ", missingIds)}] do not exist.");
-
-            }
             var quiz = new Quiz
             {
-                Title = dto.Title,
-                Description = dto.Description,
+                Title = dto.Title.Trim(),
+                Description = string.IsNullOrWhiteSpace(dto.Description) ? null : dto.Description.Trim(),
                 DurationInMinutes = dto.DurationInMinutes,
-                QuizQuestions = dto.QuestionIds.Select(qId => new QuizQuestion
-                {
-                    QuestionId = qId
-                }).ToList()
+                IsPublished = false,
+                QuizQuestions = ids.Select((id, i) => new QuizQuestion { QuestionId = id, Order = i + 1 }).ToList()
             };
 
             _context.Quizzes.Add(quiz);
             await _context.SaveChangesAsync();
 
+            _logger.LogInformation("Quiz {QuizId} created with {Count} questions", quiz.Id, ids.Count);
+
             return (await GetQuizByIdAsync(quiz.Id))!;
-
-        }
-
-        public async Task<bool> DeleteQuizAsync(int id)
-        {
-            var quiz = await _context.Quizzes.FindAsync(id);
-            if (quiz == null) return false;
-
-            _context.Quizzes.Remove(quiz);
-            await _context.SaveChangesAsync();
-            return true;
-        }
-
-        public async Task<IEnumerable<QuizResponseDto>> GetAllQuizzesAsync()
-        {
-            return await _context.Quizzes
-                .Include(q => q.QuizQuestions)
-                    .ThenInclude(qq => qq.Question)
-                .AsNoTracking()
-                .Select(q => new QuizResponseDto
-                {
-                    Id = q.Id,
-                    Title = q.Title,
-                    Description = q.Description,
-                    DurationInMinutes = q.DurationInMinutes,
-                    Questions = q.QuizQuestions.Select(qq => new QuestionResponseDto
-                    {
-                        Id = qq.Question.Id,
-                        Text = qq.Question.Text,
-                        ImageUrl = qq.Question.ImageUrl
-                    }).ToList()
-                })
-                .ToListAsync();
         }
 
         public async Task<QuizResponseDto?> GetQuizByIdAsync(int id)
         {
             var quiz = await _context.Quizzes
-                .Include(q => q.QuizQuestions)
-                 .ThenInclude(q => q.Question)
-                .ThenInclude(q => q.Choices)
                 .AsNoTracking()
+                .Include(q => q.QuizQuestions).ThenInclude(qq => qq.Question).ThenInclude(q => q.Choices)
                 .FirstOrDefaultAsync(q => q.Id == id);
 
-            if (quiz == null) return null;
+            if (quiz is null) return null;
 
             return new QuizResponseDto
             {
@@ -106,86 +71,68 @@ namespace MiniLMS.Infrastructure.Services
                 Title = quiz.Title,
                 Description = quiz.Description,
                 DurationInMinutes = quiz.DurationInMinutes,
-                Questions = quiz.QuizQuestions?.Select(qq => new QuestionResponseDto
+                IsPublished = quiz.IsPublished,
+                Questions = quiz.QuizQuestions.OrderBy(qq => qq.Order).Select(qq => new QuestionResponseDto
                 {
                     Id = qq.Question.Id,
                     Text = qq.Question.Text,
                     ImageUrl = qq.Question.ImageUrl,
-                    Choices = qq.Question.Choices?.Select(c => new ChoiceResponseDto
+                    Choices = qq.Question.Choices.OrderBy(c => c.Id).Select(c => new ChoiceResponseDto
                     {
                         Id = c.Id,
                         Text = c.Text,
                         IsCorrect = c.IsCorrect
-                    }).ToList() ?? new List<ChoiceResponseDto>()
-                }).ToList() ?? new List<QuestionResponseDto>()
+                    }).ToList()
+                }).ToList()
             };
-
         }
 
-        public async Task<QuizResultDto> SubmitQuizAsync(int quizId, int studentId, SubmitQuizDto dto)
-        {
-            var quiz = await _context.Quizzes
-                .Include(q => q.QuizQuestions)
-                .ThenInclude(qq => qq.Question)
-                .ThenInclude(q => q.Choices)
-               .FirstOrDefaultAsync(q => q.Id == quizId);
-
-            if (quiz == null)
-                throw new KeyNotFoundException("Quiz not found.");
-
-            var activeQuestions = quiz.QuizQuestions.Select(qq => qq.Question).ToList();
-
-            var CorrectAnswer = 0;
-
-            var studentAnswers = new List<StudentAnswer>();
-
-            foreach (var answer in dto.Answers)
-            {
-
-                var question = activeQuestions.FirstOrDefault(q => q.Id == answer.QuestionId);
-                if (question == null) continue;
-
-                var selectedChoice = question.Choices.FirstOrDefault(c => c.Id == answer.SelectedChoiceId);
-                bool isCorrect = selectedChoice?.IsCorrect ?? false;
-
-                if (isCorrect) CorrectAnswer++;
-
-                studentAnswers.Add(new StudentAnswer
+        public async Task<List<QuizSummaryDto>> GetAllQuizzesAsync() =>
+            await _context.Quizzes
+                .AsNoTracking()
+                .OrderByDescending(q => q.CreatedAt)
+                .Select(q => new QuizSummaryDto
                 {
-                    QuestionId = question.Id,
-                    SelectedChoiceId = answer.SelectedChoiceId,
-                    IsCorrect = isCorrect
-                });
+                    Id = q.Id,
+                    Title = q.Title,
+                    Description = q.Description,
+                    DurationInMinutes = q.DurationInMinutes,
+                    IsPublished = q.IsPublished,
+                    QuestionCount = q.QuizQuestions.Count(qq => !qq.Question.IsDeleted),
+                    CreatedAt = q.CreatedAt
+                })
+                .ToListAsync();
+
+        public async Task SetPublishedAsync(int id, bool isPublished)
+        {
+            var quiz = await _context.Quizzes.FirstOrDefaultAsync(q => q.Id == id)
+                ?? throw new KeyNotFoundException($"Quiz with ID {id} not found.");
+
+            if (isPublished)
+            {
+                var activeQuestions = await _context.QuizQuestions
+                    .CountAsync(qq => qq.QuizId == id && !qq.Question.IsDeleted);
+
+                if (activeQuestions == 0)
+                    throw new ArgumentException("Cannot publish a quiz that has no active questions.");
             }
 
-
-            var submission = new QuizSubmission
-            {
-                QuizId = quizId,
-                StudentId = studentId,
-                TotalQuestions = activeQuestions.Count,
-                CorrectAnswers = CorrectAnswer,
-                IncorrectAnswers = activeQuestions.Count - CorrectAnswer,
-                Score = CorrectAnswer,
-                SubmittedAt = DateTime.UtcNow,
-                StudentAnswers = studentAnswers
-            };
-
-
-
-            _context.QuizSubmissions.Add(submission);
+            quiz.IsPublished = isPublished;
             await _context.SaveChangesAsync();
 
-            return new QuizResultDto
-            {
-                SubmissionId = submission.Id,
-                Score = submission.Score,
-                TotalQuestions = submission.TotalQuestions,
-                CorrectAnswers = submission.CorrectAnswers,
-                IncorrectAnswers = submission.IncorrectAnswers,
-                //SubmittedAt = submission.SubmittedAt
-            };
+            _logger.LogInformation("Quiz {QuizId} {Action}", id, isPublished ? "published" : "unpublished");
+        }
+
+        public async Task DeleteQuizAsync(int id)
+        {
+            var quiz = await _context.Quizzes.FirstOrDefaultAsync(q => q.Id == id)
+                ?? throw new KeyNotFoundException($"Quiz with ID {id} not found.");
+
+            quiz.IsDeleted = true; // Soft Delete
+            quiz.IsPublished = false;
+            await _context.SaveChangesAsync();
+
+            _logger.LogInformation("Quiz {QuizId} soft-deleted", id);
         }
     }
 }
-

@@ -12,8 +12,8 @@ using MiniLMS.Infrastructure.DBContext;
 namespace MiniLMS.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20261001152603_QuestionModule")]
-    partial class QuestionModule
+    [Migration("20261003075021_UserFullName")]
+    partial class UserFullName
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -177,11 +177,14 @@ namespace MiniLMS.Infrastructure.Migrations
 
                     b.Property<string>("Text")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("QuestionId");
+                    b.HasIndex("QuestionId")
+                        .IsUnique()
+                        .HasFilter("[IsCorrect] = 1 AND [IsDeleted] = 0");
 
                     b.ToTable("Choices");
                 });
@@ -194,20 +197,181 @@ namespace MiniLMS.Infrastructure.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("ImageUrl")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(2048)
+                        .HasColumnType("nvarchar(2048)");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
                     b.Property<string>("Text")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
 
                     b.HasKey("Id");
 
                     b.ToTable("Questions");
+                });
+
+            modelBuilder.Entity("MiniLMS.Domain.Entities.Quiz", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("DurationInMinutes")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsPublished")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Quizzes");
+                });
+
+            modelBuilder.Entity("MiniLMS.Domain.Entities.QuizQuestion", b =>
+                {
+                    b.Property<int>("QuizId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("QuestionId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("int");
+
+                    b.HasKey("QuizId", "QuestionId");
+
+                    b.HasIndex("QuestionId");
+
+                    b.ToTable("QuizQuestions");
+                });
+
+            modelBuilder.Entity("MiniLMS.Domain.Entities.QuizSubmission", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AttemptNumber")
+                        .HasColumnType("int");
+
+                    b.Property<int>("CorrectAnswers")
+                        .HasColumnType("int");
+
+                    b.Property<int>("IncorrectAnswers")
+                        .HasColumnType("int");
+
+                    b.Property<int>("QuizId")
+                        .HasColumnType("int");
+
+                    b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
+                        .IsRequired()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
+
+                    b.Property<int>("Score")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("StartedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<int>("StudentId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("SubmittedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("TotalQuestions")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StudentId");
+
+                    b.HasIndex("QuizId", "StudentId", "AttemptNumber")
+                        .IsUnique();
+
+                    b.ToTable("QuizSubmissions");
+                });
+
+            modelBuilder.Entity("MiniLMS.Domain.Entities.StudentAnswer", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("CorrectChoiceId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("CorrectChoiceTextSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<bool>("IsCorrect")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("QuestionId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("QuestionTextSnapshot")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<int>("QuizSubmissionId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("SelectedChoiceId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("SelectedChoiceTextSnapshot")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("QuestionId");
+
+                    b.HasIndex("SelectedChoiceId");
+
+                    b.HasIndex("QuizSubmissionId", "QuestionId")
+                        .IsUnique();
+
+                    b.ToTable("StudentAnswers");
                 });
 
             modelBuilder.Entity("MiniLMS.Domain.Entities.User", b =>
@@ -235,6 +399,10 @@ namespace MiniLMS.Infrastructure.Migrations
                     b.Property<bool>("EmailConfirmed")
                         .HasColumnType("bit");
 
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<bool>("LockoutEnabled")
                         .HasColumnType("bit");
 
@@ -257,10 +425,6 @@ namespace MiniLMS.Infrastructure.Migrations
 
                     b.Property<bool>("PhoneNumberConfirmed")
                         .HasColumnType("bit");
-
-                    b.Property<string>("Role")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("nvarchar(max)");
@@ -347,9 +511,87 @@ namespace MiniLMS.Infrastructure.Migrations
                     b.Navigation("Question");
                 });
 
+            modelBuilder.Entity("MiniLMS.Domain.Entities.QuizQuestion", b =>
+                {
+                    b.HasOne("MiniLMS.Domain.Entities.Question", "Question")
+                        .WithMany("QuizQuestions")
+                        .HasForeignKey("QuestionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MiniLMS.Domain.Entities.Quiz", "Quiz")
+                        .WithMany("QuizQuestions")
+                        .HasForeignKey("QuizId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Question");
+
+                    b.Navigation("Quiz");
+                });
+
+            modelBuilder.Entity("MiniLMS.Domain.Entities.QuizSubmission", b =>
+                {
+                    b.HasOne("MiniLMS.Domain.Entities.Quiz", "Quiz")
+                        .WithMany("Submissions")
+                        .HasForeignKey("QuizId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MiniLMS.Domain.Entities.User", "Student")
+                        .WithMany()
+                        .HasForeignKey("StudentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Quiz");
+
+                    b.Navigation("Student");
+                });
+
+            modelBuilder.Entity("MiniLMS.Domain.Entities.StudentAnswer", b =>
+                {
+                    b.HasOne("MiniLMS.Domain.Entities.Question", "Question")
+                        .WithMany()
+                        .HasForeignKey("QuestionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MiniLMS.Domain.Entities.QuizSubmission", "QuizSubmission")
+                        .WithMany("StudentAnswers")
+                        .HasForeignKey("QuizSubmissionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MiniLMS.Domain.Entities.Choice", "SelectedChoice")
+                        .WithMany()
+                        .HasForeignKey("SelectedChoiceId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("Question");
+
+                    b.Navigation("QuizSubmission");
+
+                    b.Navigation("SelectedChoice");
+                });
+
             modelBuilder.Entity("MiniLMS.Domain.Entities.Question", b =>
                 {
                     b.Navigation("Choices");
+
+                    b.Navigation("QuizQuestions");
+                });
+
+            modelBuilder.Entity("MiniLMS.Domain.Entities.Quiz", b =>
+                {
+                    b.Navigation("QuizQuestions");
+
+                    b.Navigation("Submissions");
+                });
+
+            modelBuilder.Entity("MiniLMS.Domain.Entities.QuizSubmission", b =>
+                {
+                    b.Navigation("StudentAnswers");
                 });
 #pragma warning restore 612, 618
         }

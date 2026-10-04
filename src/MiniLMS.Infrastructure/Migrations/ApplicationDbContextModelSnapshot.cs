@@ -174,11 +174,14 @@ namespace MiniLMS.Infrastructure.Migrations
 
                     b.Property<string>("Text")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("QuestionId");
+                    b.HasIndex("QuestionId")
+                        .IsUnique()
+                        .HasFilter("[IsCorrect] = 1 AND [IsDeleted] = 0");
 
                     b.ToTable("Choices");
                 });
@@ -195,14 +198,16 @@ namespace MiniLMS.Infrastructure.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<string>("ImageUrl")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(2048)
+                        .HasColumnType("nvarchar(2048)");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
                     b.Property<string>("Text")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -237,7 +242,8 @@ namespace MiniLMS.Infrastructure.Migrations
 
                     b.Property<string>("Title")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
 
                     b.HasKey("Id");
 
@@ -255,14 +261,9 @@ namespace MiniLMS.Infrastructure.Migrations
                     b.Property<int>("Order")
                         .HasColumnType("int");
 
-                    b.Property<int?>("QuestionId1")
-                        .HasColumnType("int");
-
                     b.HasKey("QuizId", "QuestionId");
 
                     b.HasIndex("QuestionId");
-
-                    b.HasIndex("QuestionId1");
 
                     b.ToTable("QuizQuestions");
                 });
@@ -288,8 +289,10 @@ namespace MiniLMS.Infrastructure.Migrations
                         .HasColumnType("int");
 
                     b.Property<byte[]>("RowVersion")
+                        .IsConcurrencyToken()
                         .IsRequired()
-                        .HasColumnType("varbinary(max)");
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("rowversion");
 
                     b.Property<int>("Score")
                         .HasColumnType("int");
@@ -311,9 +314,10 @@ namespace MiniLMS.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("QuizId");
-
                     b.HasIndex("StudentId");
+
+                    b.HasIndex("QuizId", "StudentId", "AttemptNumber")
+                        .IsUnique();
 
                     b.ToTable("QuizSubmissions");
                 });
@@ -331,7 +335,8 @@ namespace MiniLMS.Infrastructure.Migrations
 
                     b.Property<string>("CorrectChoiceTextSnapshot")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.Property<bool>("IsCorrect")
                         .HasColumnType("bit");
@@ -341,7 +346,8 @@ namespace MiniLMS.Infrastructure.Migrations
 
                     b.Property<string>("QuestionTextSnapshot")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
 
                     b.Property<int>("QuizSubmissionId")
                         .HasColumnType("int");
@@ -350,17 +356,19 @@ namespace MiniLMS.Infrastructure.Migrations
                         .HasColumnType("int");
 
                     b.Property<string>("SelectedChoiceTextSnapshot")
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
 
                     b.HasKey("Id");
 
                     b.HasIndex("QuestionId");
 
-                    b.HasIndex("QuizSubmissionId");
-
                     b.HasIndex("SelectedChoiceId");
 
-                    b.ToTable("StudentAnswer");
+                    b.HasIndex("QuizSubmissionId", "QuestionId")
+                        .IsUnique();
+
+                    b.ToTable("StudentAnswers");
                 });
 
             modelBuilder.Entity("MiniLMS.Domain.Entities.User", b =>
@@ -388,6 +396,10 @@ namespace MiniLMS.Infrastructure.Migrations
                     b.Property<bool>("EmailConfirmed")
                         .HasColumnType("bit");
 
+                    b.Property<string>("FullName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<bool>("LockoutEnabled")
                         .HasColumnType("bit");
 
@@ -410,10 +422,6 @@ namespace MiniLMS.Infrastructure.Migrations
 
                     b.Property<bool>("PhoneNumberConfirmed")
                         .HasColumnType("bit");
-
-                    b.Property<string>("Role")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("nvarchar(max)");
@@ -503,14 +511,10 @@ namespace MiniLMS.Infrastructure.Migrations
             modelBuilder.Entity("MiniLMS.Domain.Entities.QuizQuestion", b =>
                 {
                     b.HasOne("MiniLMS.Domain.Entities.Question", "Question")
-                        .WithMany()
-                        .HasForeignKey("QuestionId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("MiniLMS.Domain.Entities.Question", null)
                         .WithMany("QuizQuestions")
-                        .HasForeignKey("QuestionId1");
+                        .HasForeignKey("QuestionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.HasOne("MiniLMS.Domain.Entities.Quiz", "Quiz")
                         .WithMany("QuizQuestions")
@@ -528,13 +532,13 @@ namespace MiniLMS.Infrastructure.Migrations
                     b.HasOne("MiniLMS.Domain.Entities.Quiz", "Quiz")
                         .WithMany("Submissions")
                         .HasForeignKey("QuizId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("MiniLMS.Domain.Entities.User", "Student")
                         .WithMany()
                         .HasForeignKey("StudentId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.Navigation("Quiz");
@@ -547,7 +551,7 @@ namespace MiniLMS.Infrastructure.Migrations
                     b.HasOne("MiniLMS.Domain.Entities.Question", "Question")
                         .WithMany()
                         .HasForeignKey("QuestionId")
-                        .OnDelete(DeleteBehavior.Cascade)
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
                     b.HasOne("MiniLMS.Domain.Entities.QuizSubmission", "QuizSubmission")
@@ -558,7 +562,8 @@ namespace MiniLMS.Infrastructure.Migrations
 
                     b.HasOne("MiniLMS.Domain.Entities.Choice", "SelectedChoice")
                         .WithMany()
-                        .HasForeignKey("SelectedChoiceId");
+                        .HasForeignKey("SelectedChoiceId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Question");
 

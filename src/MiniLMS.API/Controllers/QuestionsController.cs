@@ -1,5 +1,7 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using MiniLMS.Application.DTOs;
+using MiniLMS.Application.DTOs.QuestionDtos;
 using MiniLMS.Application.Interfaces;
 
 
@@ -7,7 +9,7 @@ namespace MiniLMS.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    //[Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin")]
     public class QuestionsController : ControllerBase
     {
         private readonly IQuestionService _questionService;
@@ -16,76 +18,39 @@ namespace MiniLMS.API.Controllers
         {
             _questionService = questionService;
         }
-        //CRUD
-        //Create question 
-        [HttpPost("Add_Question")] //POST /api/questions
-
-        public async Task<ActionResult> CreateQuection([FromBody] QuestionResponceDto dto)
+        [HttpPost]
+        [ProducesResponseType(typeof(QuestionResponseDto), StatusCodes.Status201Created)]
+        public async Task<IActionResult> Create([FromBody] SaveQuestionDto dto)
         {
-            try
-            {
-                var result = await _questionService.CreateQuestionAsync(dto);
-
-                return CreatedAtAction(nameof(GetQuestionById), new { id = result.Id }, result);
-
-            }
-            catch (ArgumentException ex)
-            {
-
-                return BadRequest(new { message = ex.Message });
-            }
-
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+            var result = await _questionService.CreateQuestionAsync(dto);
+            return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
         }
 
-        [HttpGet("{id}")]
-        public async Task<IActionResult> GetQuestionById(int id)
+
+        [HttpGet("{id:int}")]
+        public async Task<IActionResult> GetById(int id)
         {
             var question = await _questionService.GetQuestionByIdAsync(id);
-            if (question == null)
-                return NotFound(new { message = $"Question with ID {id} not found." });
-
-            return Ok(question);
+            return question is null
+                ? NotFound(new ProblemDetails { Status = 404, Title = "Not found", Detail = $"Question with ID {id} not found." })
+                : Ok(question);
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetAllQuestions()
+        public async Task<IActionResult> GetAll() =>
+            Ok(await _questionService.GetAllQuestionsAsync());
+
+        [HttpPut("{id:int}")]
+        public async Task<IActionResult> Update(int id, [FromBody] SaveQuestionDto dto) =>
+            Ok(await _questionService.UpdateQuestionAsync(id, dto));
+
+        [HttpDelete("{id:int}")]
+        public async Task<IActionResult> Delete(int id)
         {
-            var questions = await _questionService.GetAllQuestionsAsync();
-            return Ok(questions);
-        }
-
-
-        [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateQuestion(int id, [FromBody] QuestionResponceDto dto)
-        {
-            try
-            {
-                await _questionService.UpdateQuestionAsync(id, dto);
-                return NoContent();
-            }
-            catch (ArgumentException ex)
-            {
-
-                return BadRequest(new { message = ex.Message });
-            }
-            catch (KeyNotFoundException ex)
-            {
-
-                return NotFound(new { message = ex.Message });
-            }
-        }
-
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteQuestion(int id)
-        {
-            var existingQuestion = await _questionService.GetQuestionByIdAsync(id);
-            if (existingQuestion == null)
-                return NotFound(new { message = $"Question with ID {id} not found." });
-
             await _questionService.DeleteQuestionAsync(id);
-            return NoContent(); // 204 No Content
+            return NoContent();
         }
-
-
     }
 }

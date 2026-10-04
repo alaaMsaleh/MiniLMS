@@ -7,8 +7,7 @@ namespace MiniLMS.Application.Interfaces
         Task AddAsync(Question question);
         Task<List<Question>> GetAllAsync();
         Task<Question?> GetByIdAsync(int id);
-        void Update(Question question);
-        void Delete(Question question);
+        Task ExecuteInTransactionAsync(Func<Task> action);
         Task<bool> SaveChangesAsync();
     }
 }

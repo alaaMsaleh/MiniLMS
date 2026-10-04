@@ -1,9 +1,9 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using MiniLMS.Application.DTOs.Identities;
 using MiniLMS.Domain.Entities;
 using MiniLMS.Domain.ServicesContract;
-using MiniLMS.Infrastructure.DBContext;
 
 namespace MiniLMS.API.Controllers
 {
@@ -13,74 +13,43 @@ namespace MiniLMS.API.Controllers
     {
         private readonly UserManager<User> _userManager;
         private readonly SignInManager<User> _siginManager;
-        private readonly ApplicationDbContext _context;
+        private readonly ILogger<AuthController> _logger;
         private readonly IAuthService _authService;
         public AuthController(UserManager<User> userManager, SignInManager<User> siginManager,
-            ApplicationDbContext context,
+            ILogger<AuthController> logger,
             IAuthService authService)
         {
             _userManager = userManager;
             _siginManager = siginManager;
-            _context = context;
             _authService = authService;
-        }
-        [HttpPost("Register")] //Post : api/Auth/Register
-        public async Task<ActionResult<UserDto>> Registration([FromForm] RegisterRequestDto registerRequestDto)
-        {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-            //check email
-            var Email = await _userManager.FindByEmailAsync(registerRequestDto.Email);
-            if (Email != null) return BadRequest(new { Message = "This Email is already registered" });
-
-            //Check  userName
-            var userName = registerRequestDto.UserName;
-            var existingUserName = await _userManager.FindByNameAsync(userName);
-            if (existingUserName != null)
-                return BadRequest(new { message = "This username is already taken." });
-
-            //create new User
-            var user = new User()
-            {
-                UserName = registerRequestDto.UserName,
-                Email = registerRequestDto.Email,
-                Role = registerRequestDto.role
-
-            };
-
-            var result = await _userManager.CreateAsync(user, registerRequestDto.Password);
-            if (!result.Succeeded)
-            {
-                return BadRequest(result.Errors);
-            }
-
-            return Ok(new UserDto()
-            {
-                UserName = user.UserName,
-                Email = user.Email,
-                Token = await _authService.CreateTokenAsync(user, _userManager)
-
-
-            });
+            _logger = logger;
 
         }
+
 
         [HttpPost("login")]
-        public async Task<ActionResult<UserDto>> Login([FromForm] LoginDto model)
+        [AllowAnonymous]
+        public async Task<ActionResult<UserDto>> Login([FromBody] LoginDto model)
         {
             var user = await _userManager.FindByEmailAsync(model.Email);
 
             if (user is null) return Unauthorized(401);
 
-            var result = await _siginManager.CheckPasswordSignInAsync(user, model.Password, false);
+            var result = user is null
+          ? null
+          : await _siginManager.CheckPasswordSignInAsync(user, model.Password, lockoutOnFailure: true);
 
-            if (!result.Succeeded) return Unauthorized(401);
+            if (user is null || result is null || !result.Succeeded)
+            {
+                _logger.LogWarning("Failed login attempt for {Email}", model.Email);
+                return Unauthorized(new { message = "Invalid email or password." });
+            }
+
+            _logger.LogInformation("User {UserId} logged in", user.Id);
 
             return Ok(new UserDto()
             {
-                UserName = user.UserName,
+                UserName = user.FullName,
                 Email = user.Email,
                 Token = await _authService.CreateTokenAsync(user, _userManager)
 

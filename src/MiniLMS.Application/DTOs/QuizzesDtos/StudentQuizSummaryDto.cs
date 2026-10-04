@@ -1,15 +1,11 @@
 ﻿namespace MiniLMS.Application.DTOs.QuizzesDtos
 {
-    public class QuizResponseDto
+    public class StudentQuizSummaryDto
     {
-
-        //For Admin 
         public int Id { get; set; }
         public string Title { get; set; } = string.Empty;
         public string? Description { get; set; }
         public int DurationInMinutes { get; set; }
-        public bool IsPublished { get; set; }
-        public List<QuestionResponseDto> Questions { get; set; } = new();
-
+        public int QuestionCount { get; set; }
     }
 }

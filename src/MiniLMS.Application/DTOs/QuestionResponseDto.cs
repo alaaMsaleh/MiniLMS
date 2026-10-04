@@ -6,8 +6,7 @@ namespace MiniLMS.Application.DTOs
     {
         public int Id { get; set; }
         public string Text { get; set; } = string.Empty;
-        public string? ImageUrl { get; set; }
-        public List<ChoiceResponseDto> Choices { get; set; } = new();
+        public string? ImageUrl { get; set; } //option
+        public List<ChoiceResponseDto> Choices { get; set; }
     }
-
 }

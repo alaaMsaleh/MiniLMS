@@ -35,7 +35,7 @@ namespace MiniLMS.Infrastructure.Configurations
                 e.HasOne(x => x.Question).WithMany(q => q.Choices)
                     .HasForeignKey(x => x.QuestionId).OnDelete(DeleteBehavior.Cascade);
 
-                // select one correct chice
+                // unique index => one correct choice
                 e.HasIndex(x => x.QuestionId)
                     .IsUnique()
                     .HasFilter("[IsCorrect] = 1 AND [IsDeleted] = 0");
@@ -53,7 +53,7 @@ namespace MiniLMS.Infrastructure.Configurations
             // ---------- QuizSubmission ----------
             modelbuilder.Entity<QuizSubmission>(e =>
             {
-                e.Property(x => x.Score).HasPrecision(5, 2);
+
                 e.Property(x => x.RowVersion).IsRowVersion();
 
                 e.HasOne(x => x.Quiz).WithMany(q => q.Submissions)
@@ -65,7 +65,7 @@ namespace MiniLMS.Infrastructure.Configurations
                 e.HasIndex(x => new { x.QuizId, x.StudentId, x.AttemptNumber }).IsUnique();
             });
 
-            // ---------- StudentAnswer ----------
+            // ---------- StudentAnswers ----------
             modelbuilder.Entity<StudentAnswer>(e =>
             {
                 e.HasOne(x => x.QuizSubmission).WithMany(s => s.StudentAnswers)

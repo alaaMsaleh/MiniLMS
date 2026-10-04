@@ -22,10 +22,11 @@ namespace MiniLMS.Application.Services
             //Playload (Claims )
             //Private Claims (User-defined
 
-            var privateClaims = new List<Claim>()
+            var privateClaims = new List<Claim>
             {
-                new Claim(ClaimTypes.Name , user.UserName),
-                new Claim(ClaimTypes.Email , user.Email),
+                new Claim(ClaimTypes.NameIdentifier ,user.Id.ToString()),
+                new(ClaimTypes.Name, user.UserName!),
+                new Claim(ClaimTypes.Email , user.Email!),
 
 
             };
@@ -49,9 +50,9 @@ namespace MiniLMS.Application.Services
 
             var token = new JwtSecurityToken(
 
+               issuer: _configuration["JWT:ValidIssuer"],
                 audience: _configuration["JWT:ValidAudience"],
-                issuer: _configuration["JWT:ValidIssure"],
-                expires: DateTime.Now.AddDays(double.Parse(_configuration["JWT:DurationInDays"] ?? "0")),
+                expires: DateTime.Now.AddDays(double.Parse(_configuration["JWT:DurationInDays"] ?? "60")),
                 claims: privateClaims,
                 signingCredentials: new SigningCredentials(authKey, SecurityAlgorithms.HmacSha256Signature)
 
