@@ -1,6 +1,6 @@
 # Mini LMS
 
-Backend for a small learning management system, built for the Keyformance take-home assignment. An admin writes questions and puts them into quizzes. Students take a published quiz, submit their answers and get a score back. The admin can look at how each student is doing.
+Backend for a small learning management system, An admin writes questions and puts them into quizzes. Students take a published quiz, submit their answers and get a score back. The admin can look at how each student is doing.
 
 Stack: ASP.NET Core (.NET 8), Entity Framework Core, SQL Server, ASP.NET Identity with JWT bearer tokens, Swagger.
 
